@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Bill</title>
+<!-- MDH bill page (v2.34). The bill is NOT stored anywhere: it travels inside the link after «#» (compact JSON, deflate,
+     base64url) and the part after «#» is never sent to a server. Published to the public repo by .github/workflows/bill-page.yml. -->
+<style>
+  :root { --ink: #1c1c1e; --muted: #6b6b70; --line: #e5e5ea; --brand: #0b5cad; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, 'Segoe UI', Tahoma, 'Vazirmatn', Arial, sans-serif; background: #f2f2f7; color: var(--ink); }
+  .wrap { max-width: 460px; margin: 0 auto; padding: 16px 12px 40px; }
+  .bill { background: #fff; border-radius: 16px; padding: 20px 18px; box-shadow: 0 2px 14px rgba(0,0,0,.07); }
+  h1 { font-size: 21px; margin: 0 0 4px; text-align: center; }
+  .c { text-align: center; } .muted { color: var(--muted); font-size: 13px; } .sm { font-size: 13px; }
+  .title { text-align: center; font-weight: 700; margin: 12px 0 2px; letter-spacing: .3px; }
+  .meta { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 14px; margin: 10px 0; }
+  .meta span:nth-child(odd) { color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td { padding: 7px 0; border-bottom: 1px dashed var(--line); vertical-align: top; }
+  td.n { text-align: end; white-space: nowrap; padding-inline-start: 10px; }
+  .tot td { border: 0; padding: 3px 0; } .big td { font-size: 19px; font-weight: 700; padding-top: 8px; }
+  .foot { text-align: center; margin-top: 14px; font-size: 14px; white-space: pre-line; }
+  .btns { display: flex; gap: 10px; margin-top: 14px; }
+  .btns button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font-size: 15px; font-weight: 600; background: var(--brand); color: #fff; cursor: pointer; }
+  .btns button.alt { background: #e5e5ea; color: var(--ink); }
+  .by { text-align: center; color: var(--muted); font-size: 11px; margin-top: 14px; }
+  .err { background: #fff; border-radius: 16px; padding: 24px; text-align: center; }
+  @media print { body { background: #fff; } .wrap { padding: 0; max-width: none; } .bill { box-shadow: none; border-radius: 0; } .btns, .by { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="err">…</div></div>
+<script>
+const L = {
+  en: { tax: 'Tax invoice', refund: 'Refund', quote: 'Quotation', no: 'No.', date: 'Date', branch: 'Branch', customer: 'Customer', cashier: 'Cashier', table: 'Table', trn: 'TRN', disc: 'Discount', net: 'Net', vat: 'VAT', total: 'Total', cash: 'Cash', card: 'Card', credit: 'On account', change: 'Change', more: '… and {n} more items', ins: 'Insurance', patient: 'Patient pays', save: 'Save as PDF', share: 'Share', thanks: 'Thank you', bad: 'This bill link is not complete. Please scan the QR code again.', old: 'Please open this link in an up-to-date browser (Chrome, Safari).', ret: 'Return of' },
+  fa: { tax: 'فاکتور مالیاتی', refund: 'برگشتی', quote: 'پیش‌فاکتور', no: 'شماره', date: 'تاریخ', branch: 'شعبه', customer: 'مشتری', cashier: 'صندوق‌دار', table: 'میز', trn: 'شمارهٔ مالیاتی', disc: 'تخفیف', net: 'خالص', vat: 'مالیات', total: 'جمع', cash: 'نقد', card: 'کارت', credit: 'به حساب', change: 'باقی‌مانده', more: '… و {n} قلم دیگر', ins: 'بیمه', patient: 'سهم بیمار', save: 'ذخیره به‌صورت PDF', share: 'اشتراک', thanks: 'سپاس از خرید شما', bad: 'لینک این فاکتور کامل نیست. لطفاً کد QR را دوباره اسکن کنید.', old: 'لطفاً این لینک را با یک مرورگر به‌روز (Chrome، Safari) باز کنید.', ret: 'برگشت از' },
+  ar: { tax: 'فاتورة ضريبية', refund: 'مرتجع', quote: 'عرض سعر', no: 'رقم', date: 'التاريخ', branch: 'الفرع', customer: 'العميل', cashier: 'الكاشير', table: 'طاولة', trn: 'الرقم الضريبي', disc: 'الخصم', net: 'الصافي', vat: 'الضريبة', total: 'الإجمالي', cash: 'نقداً', card: 'بطاقة', credit: 'على الحساب', change: 'الباقي', more: '… و{n} أصناف أخرى', ins: 'التأمين', patient: 'يدفع المريض', save: 'حفظ PDF', share: 'مشاركة', thanks: 'شكراً لتسوقكم', bad: 'رابط الفاتورة غير مكتمل. يرجى مسح رمز QR مرة أخرى.', old: 'يرجى فتح الرابط في متصفح حديث (Chrome، Safari).', ret: 'مرتجع من' },
+  hi: { tax: 'टैक्स इनवॉइस', refund: 'वापसी', quote: 'कोटेशन', no: 'नंबर', date: 'तारीख़', branch: 'शाखा', customer: 'ग्राहक', cashier: 'कैशियर', table: 'टेबल', trn: 'TRN', disc: 'छूट', net: 'शुद्ध', vat: 'VAT', total: 'कुल', cash: 'नकद', card: 'कार्ड', credit: 'खाते में', change: 'बाक़ी', more: '… और {n} आइटम', ins: 'बीमा', patient: 'मरीज़ देता है', save: 'PDF सहेजें', share: 'शेयर', thanks: 'धन्यवाद', bad: 'यह बिल लिंक अधूरा है। कृपया QR कोड फिर से स्कैन करें।', old: 'कृपया यह लिंक नए ब्राउज़र (Chrome, Safari) में खोलें।', ret: 'वापसी' },
+  ur: { tax: 'ٹیکس انوائس', refund: 'واپسی', quote: 'کوٹیشن', no: 'نمبر', date: 'تاریخ', branch: 'برانچ', customer: 'گاہک', cashier: 'کیشیئر', table: 'ٹیبل', trn: 'TRN', disc: 'رعایت', net: 'خالص', vat: 'VAT', total: 'کل', cash: 'نقد', card: 'کارڈ', credit: 'کھاتے میں', change: 'باقی', more: '… اور {n} آئٹم', ins: 'انشورنس', patient: 'مریض دیتا ہے', save: 'PDF محفوظ کریں', share: 'شیئر', thanks: 'شکریہ', bad: 'یہ بل لنک نامکمل ہے۔ براہ کرم QR کوڈ دوبارہ اسکین کریں۔', old: 'براہ کرم یہ لنک نئے براؤزر (Chrome، Safari) میں کھولیں۔', ret: 'واپسی از' }
+};
+const ltr = s => `<bdi dir="ltr">${esc(s)}</bdi>`;     // numbers, phone, TRN, dates read left to right inside RTL text
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const app = document.getElementById('app');
+const fail = msg => { app.innerHTML = `<div class="err">${esc(msg)}</div>`; };
+async function decode(data) {
+  const bin = atob(data.replace(/-/g, '+').replace(/_/g, '/'));
+  const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return JSON.parse(await new Response(stream).text());
+}
+function render(b) {
+  const lang = L[b.g] ? b.g : 'en', T = L[lang];
+  document.documentElement.lang = lang;
+  document.documentElement.dir = ['fa', 'ar', 'ur'].includes(lang) ? 'rtl' : 'ltr';
+  const f = n => (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const q = n => String(Math.round((Number(n) || 0) * 1000) / 1000);
+  document.title = `${b.co || ''} — ${b.n || ''}`;
+  const meta = [[T.no, b.n], [T.date, (b.d || '').replace('T', ' ')], [T.branch, b.br], [T.table, b.tb], [T.customer, b.cu], [T.cashier, b.ca], [T.ret, b.o]]
+    .filter(x => x[1]).map(([k, v], i) => `<span>${esc(k)}</span><span>${[0, 1, 6].includes(i) ? ltr(v) : esc(v)}</span>`).join('');
+  const rows = (b.l || []).map(r => `<tr><td>${esc(r[0])}<div class="muted">${q(r[1])} × ${f(r[2])}${r[4] ? ` −${r[4]}%` : ''}${r[5] ? ` · ${esc(r[5])}` : ''}</div></td><td class="n">${f(r[3])}</td></tr>`).join('')
+    + (b.more ? `<tr><td colspan="2" class="muted">${esc(T.more.replace('{n}', b.more))}</td></tr>` : '');
+  const pay = b.pm ? `<tr class="tot"><td>${esc(T[b.pm] || b.pm)}</td><td class="n">${f(b.pm === 'credit' ? b.tot : (b.gv || b.tot))}</td></tr>` + (b.chg ? `<tr class="tot"><td>${esc(T.change)}</td><td class="n">${f(b.chg)}</td></tr>` : '') : '';
+  const ins = b.ins ? `<tr class="tot"><td>🏥 ${esc(T.ins)} ${esc(b.ins[0])} ${b.ins[1]}%</td><td class="n">−${f(b.ins[2])}</td></tr><tr class="tot big"><td>${esc(T.patient)}</td><td class="n">${f(b.ins[3])}</td></tr>` : '';
+  app.innerHTML = `<div class="bill">
+    <h1>${esc(b.co)}</h1>
+    ${b.ad ? `<div class="c muted">${esc(b.ad)}</div>` : ''}${b.ph ? `<div class="c muted">☎ ${ltr(b.ph)}</div>` : ''}${b.trn ? `<div class="c muted">${esc(T.trn)}: ${ltr(b.trn)}</div>` : ''}
+    <div class="title">${esc(b.q ? T.quote : T.tax)}${b.rf ? ' — ' + esc(T.refund) : ''}</div>
+    <div class="meta">${meta}</div>
+    <table>${rows}</table>
+    <table style="margin-top:8px">
+      ${b.dt ? `<tr class="tot"><td>${esc(T.disc)}</td><td class="n">−${f(b.dt)}</td></tr>` : ''}
+      <tr class="tot"><td>${esc(T.net)}</td><td class="n">${f(b.net)}</td></tr>
+      <tr class="tot"><td>${esc(T.vat)}</td><td class="n">${f(b.vat)}</td></tr>
+      <tr class="tot big"><td>${esc(T.total)} ${esc(b.cur || '')}</td><td class="n">${f(b.tot)}</td></tr>
+      ${ins}${pay}
+    </table>
+    <div class="foot">${esc(b.ft || T.thanks)}</div>
+  </div>
+  <div class="btns"><button id="pdf">📄 ${esc(T.save)}</button>${navigator.share ? `<button class="alt" id="sh">📤 ${esc(T.share)}</button>` : ''}</div>
+  <div class="by">MDH</div>`;
+  document.getElementById('pdf').onclick = () => window.print();
+  const sh = document.getElementById('sh');
+  if (sh) sh.onclick = () => navigator.share({ title: document.title, url: location.href }).catch(() => {});
+}
+(async () => {
+  const data = location.hash.slice(1);
+  if (!data) return fail(L.en.bad);
+  if (typeof DecompressionStream === 'undefined') return fail(L.en.old);
+  try { render(await decode(data)); } catch (e) { fail(L.en.bad); }
+})();
+</script>
+</body>
+</html>
